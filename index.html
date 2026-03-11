@@ -26,8 +26,8 @@
 </div>
 
 <script>
-    // 假设你的 OpenClaw 运行在本地 8000 端
-    const socket = new WebSocket('http://:18789/');
+    // 假设你的 OpenClaw 运行在本地 8000 端口
+    const socket = new WebSocket('ws://localhost:8000/ws/claw');
 
     socket.onmessage = function(event) {
         const data = JSON.parse(event.data);
