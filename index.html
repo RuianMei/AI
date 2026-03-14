@@ -36,25 +36,52 @@
         </div>
     </footer>
 
-    <script>
+<script>
         const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
+        
+        // 建议：你可以先在页面上手动设置一个变量，或者弹窗询问 Key
+        // 暂时默认使用 DeepSeek 的 API 地址，你也可以换成 OpenAI
+        const API_URL = "https://api.deepseek.com/v1/chat/completions"; 
+        const API_KEY = "sk-4b7f2e7fb3f7479a880ec20bb0381b70"; // 记得保护好它！
 
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
 
-            // 添加用户消息到界面
             appendMessage('user', text);
             userInput.value = '';
 
-            // 这里模拟 AI 回复（稍后你可以接入真正的 API）
-            appendMessage('ai', "正在思考中...");
-            
-            setTimeout(() => {
-                const lastMsg = chatBox.lastElementChild.querySelector('div');
-                lastMsg.innerText = "这是一个前端 Demo。要让 AI 真正说话，你需要接入 API Key。";
-            }, 1000);
+            // 创建一个占位的 AI 消息框
+            const aiMsgDiv = appendMessage('ai', "正在思考...");
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat", // 或者 "gpt-3.5-turbo"
+                        messages: [
+                            { role: "system", content: "你是一个有用的助手。" },
+                            { role: "user", content: text }
+                        ],
+                        stream: false // 简单起见，先不用流式传输
+                    })
+                });
+
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                
+                // 更新 AI 的回复内容
+                aiMsgDiv.innerText = aiResponse;
+
+            } catch (error) {
+                aiMsgDiv.innerText = "出错了: " + error.message;
+                aiMsgDiv.classList.add('text-red-500');
+            }
         }
 
         function appendMessage(role, text) {
@@ -70,9 +97,9 @@
             wrapper.appendChild(msg);
             chatBox.appendChild(wrapper);
             chatBox.scrollTop = chatBox.scrollHeight;
+            return msg; // 返回消息节点以便后续修改
         }
 
-        // 回车发送
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
