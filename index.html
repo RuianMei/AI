@@ -38,87 +38,81 @@
         <p class="text-center text-[10px] text-gray-400 mt-2">请确保已在代码中配置有效的 API Key</p>
     </footer>
 
-    <script>
-        // --- 配置区 ---
-        // 确保引号内没有多余空格，且是标准的英文引号
-        const API_KEY = "sk-dcboxzwcrcnalteumoxfwgxaqzurqxkaelhotrfcsivgacln".trim(); 
-        const API_URL = "https://api.deepseek.com/v1/chat/completions"; 
+<script>
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user-input');
 
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
+    // --- 硅基流动专用配置 ---
+    // 1. 填入你复制的那串长字符（不管有没有 sk-，直接填进去）
+    const MY_KEY = "sk-dcboxzwcrcnalteumoxfwgxaqzurqxkaelhotrfcsivgacln".trim(); 
+    const API_URL = "https://api.siliconflow.cn/v1/chat/completions"; 
 
-        async function sendMessage() {
-            const text = userInput.value.trim();
-            if (!text) return;
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
 
-            // 1. 显示用户消息
-            appendMessage('user', text);
-            userInput.value = '';
+        appendMessage('user', text);
+        userInput.value = '';
 
-            // 2. 显示 AI 正在思考的状态
-            const aiMsgDiv = appendMessage('ai', "正在思考中...");
+        const aiMsgDiv = appendMessage('ai', "正在思考中...");
 
-            try {
-                // 3. 发起请求
-                const response = await fetch(API_URL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        // 使用标准的拼接方式避免编码问题
-                        "Authorization": "Bearer " + API_KEY
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-chat", // 如果用的是OpenAI，请改为 gpt-3.5-turbo
-                        messages: [
-                            { role: "system", content: "你是一个有用且简洁的AI助手。" },
-                            { role: "user", content: text }
-                        ],
-                        temperature: 0.7
-                    })
-                });
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    // 重点：Bearer 后面一定要有空格！
+                    "Authorization": `Bearer ${MY_KEY}`
+                },
+                body: JSON.stringify({
+                    // 使用硅基流动目前最推荐的免费模型之一
+                    model: "deepseek-ai/DeepSeek-V3", 
+                    messages: [
+                        { role: "user", content: text }
+                    ],
+                    temperature: 0.7
+                })
+            });
 
-                const data = await response.json();
+            // 获取返回的 JSON 数据
+            const data = await response.json();
 
-                // 4. 检查响应状态
-                if (!response.ok) {
-                    throw new Error(data.error ? data.error.message : `请求失败(${response.status})`);
-                }
-
-                // 5. 更新界面内容
-                if (data.choices && data.choices.length > 0) {
-                    aiMsgDiv.innerText = data.choices[0].message.content;
-                } else {
-                    throw new Error("未收到有效的回复内容");
-                }
-
-            } catch (error) {
-                aiMsgDiv.innerText = "❌ 错误: " + error.message;
-                aiMsgDiv.style.color = "#dc2626"; // 变红显示
-                console.error("Debug info:", error);
+            // 如果报错了，直接把错误内容甩出来
+            if (!response.ok) {
+                console.error("API 返回了错误:", data);
+                throw new Error(data.error ? data.error.message : `HTTP错误 ${response.status}`);
             }
-        }
 
-        // 辅助函数：创建消息气泡
-        function appendMessage(role, text) {
-            const wrapper = document.createElement('div');
-            wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
-            
-            const msg = document.createElement('div');
-            msg.className = role === 'user' ? 'user-msg px-4 py-3 max-w-[85%] shadow-md' : 'ai-msg px-4 py-3 max-w-[85%] shadow-sm';
-            msg.innerText = text;
-            
-            wrapper.appendChild(msg);
-            chatBox.appendChild(wrapper);
-            
-            // 自动滚动到底部
-            chatBox.scrollTop = chatBox.scrollHeight;
-            return msg;
-        }
+            // 显示 AI 的回答
+            if (data.choices && data.choices[0].message) {
+                aiMsgDiv.innerText = data.choices[0].message.content;
+            } else {
+                throw new Error("返回数据格式不正确");
+            }
 
-        // 支持回车发送
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    </script>
+        } catch (error) {
+            aiMsgDiv.innerText = "❌ 错误: " + error.message;
+            aiMsgDiv.classList.add('text-red-500');
+            console.error("调试详情:", error);
+        }
+    }
+
+    // 辅助函数：显示消息
+    function appendMessage(role, text) {
+        const wrapper = document.createElement('div');
+        wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
+        const msg = document.createElement('div');
+        msg.className = role === 'user' 
+            ? 'bg-blue-600 text-white rounded-2xl px-4 py-2 max-w-[85%] shadow-md' 
+            : 'bg-white border border-gray-200 rounded-2xl px-4 py-2 max-w-[85%] shadow-sm';
+        msg.innerText = text;
+        wrapper.appendChild(msg);
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return msg;
+    }
+
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+</script>
 </body>
 </html>
