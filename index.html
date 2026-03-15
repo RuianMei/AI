@@ -40,11 +40,11 @@
         const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
         
-        // 建议：你可以先在页面上手动设置一个变量，或者弹窗询问 Key
-        // 暂时默认使用 DeepSeek 的 API 地址，你也可以换成 OpenAI
+        // 1. 在这里填入你的配置
         const API_URL = "https://api.deepseek.com/v1/chat/completions"; 
-        const API_KEY = "sk-b87bcc629e584034b3b25c7dec9f89f8"; // 记得保护好它！
+        const API_KEY = "你的真实API_KEY填在这里"; 
 
+        // 2. 这里就是你刚才问的那段代码，它负责处理发送和接收
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
@@ -52,7 +52,6 @@
             appendMessage('user', text);
             userInput.value = '';
 
-            // 创建一个占位的 AI 消息框
             const aiMsgDiv = appendMessage('ai', "正在思考...");
 
             try {
@@ -63,27 +62,34 @@
                         "Authorization": `Bearer ${API_KEY}`
                     },
                     body: JSON.stringify({
-                        model: "deepseek-chat", // 或者 "gpt-3.5-turbo"
+                        model: "deepseek-chat", 
                         messages: [
                             { role: "system", content: "你是一个有用的助手。" },
                             { role: "user", content: text }
-                        ],
-                        stream: false // 简单起见，先不用流式传输
+                        ]
                     })
                 });
 
                 const data = await response.json();
-                const aiResponse = data.choices[0].message.content;
-                
-                // 更新 AI 的回复内容
-                aiMsgDiv.innerText = aiResponse;
+
+                if (!response.ok) {
+                    throw new Error(data.error ? data.error.message : `状态码: ${response.status}`);
+                }
+
+                if (data.choices && data.choices.length > 0) {
+                    aiMsgDiv.innerText = data.choices[0].message.content;
+                } else {
+                    throw new Error("API 返回数据格式异常");
+                }
 
             } catch (error) {
-                aiMsgDiv.innerText = "出错了: " + error.message;
+                aiMsgDiv.innerText = "❌ 出错了: " + error.message;
                 aiMsgDiv.classList.add('text-red-500');
+                console.error("详细错误日志:", error);
             }
         }
 
+        // 3. 这个辅助函数负责把文字变成气泡显示在屏幕上
         function appendMessage(role, text) {
             const wrapper = document.createElement('div');
             wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
@@ -97,9 +103,10 @@
             wrapper.appendChild(msg);
             chatBox.appendChild(wrapper);
             chatBox.scrollTop = chatBox.scrollHeight;
-            return msg; // 返回消息节点以便后续修改
+            return msg; 
         }
 
+        // 4. 监听回车键
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
