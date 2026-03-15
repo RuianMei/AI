@@ -3,101 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的 AI 助手</title>
+    <title>我的 GitHub AI 助手</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .chat-container { height: calc(100vh - 160px); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        .chat-container { height: calc(100vh - 180px); }
+        .user-msg { background-color: #2563eb; color: white; border-radius: 1rem 1rem 0 1rem; }
+        .ai-msg { background-color: white; color: #1f2937; border-radius: 1rem 1rem 1rem 0; border: 1px solid #e5e7eb; shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
     </style>
 </head>
-<body class="bg-gray-50 flex flex-col h-screen">
+<body class="bg-gray-50 flex flex-col h-screen font-sans">
 
-    <header class="bg-white shadow-sm py-4 px-6">
-        <h1 class="text-xl font-bold text-gray-800">🚀 My GitHub AI</h1>
+    <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-600 tracking-tight">AI Assistant</h1>
+        <span class="text-xs text-gray-400">Powered by DeepSeek / OpenAI</span>
     </header>
 
-    <main id="chat-box" class="chat-container overflow-y-auto p-6 space-y-4 flex-1">
+    <main id="chat-box" class="chat-container overflow-y-auto p-4 md:p-8 space-y-6 flex-1">
         <div class="flex justify-start">
-            <div class="bg-white border border-gray-200 rounded-2xl px-4 py-2 max-w-[80%] shadow-sm">
-                你好！我是你的 AI 助手，有什么我可以帮你的吗？
+            <div class="ai-msg px-4 py-3 max-w-[85%] shadow-sm">
+                你好！我已经准备好为你服务了。请输入你的问题。
             </div>
         </div>
     </main>
 
     <footer class="p-4 bg-white border-t border-gray-200">
-        <div class="max-w-4xl mx-auto flex gap-2">
+        <div class="max-w-4xl mx-auto flex gap-3">
             <input type="text" id="user-input" placeholder="输入消息..." 
-                class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
             <button onclick="sendMessage()" 
-                class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-lg active:scale-95">
                 发送
             </button>
         </div>
+        <p class="text-center text-[10px] text-gray-400 mt-2">请确保已在代码中配置有效的 API Key</p>
     </footer>
 
-<script>
+    <script>
+        // --- 配置区 ---
+        // 确保引号内没有多余空格，且是标准的英文引号
+        const API_KEY = "sk-b87bcc629e584034b3b25c7dec9f89f8".trim(); 
+        const API_URL = "https://api.deepseek.com/v1/chat/completions"; 
+
         const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
-        
-        // 1. 在这里填入你的配置
-        const API_URL = "https://api.deepseek.com/v1/chat/completions"; 
-        
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 1. 显示用户消息
+            appendMessage('user', text);
+            userInput.value = '';
+
+            // 2. 显示 AI 正在思考的状态
+            const aiMsgDiv = appendMessage('ai', "正在思考中...");
+
+            try {
+                // 3. 发起请求
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        // 使用标准的拼接方式避免编码问题
+                        "Authorization": "Bearer " + API_KEY
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat", // 如果用的是OpenAI，请改为 gpt-3.5-turbo
+                        messages: [
+                            { role: "system", content: "你是一个有用且简洁的AI助手。" },
+                            { role: "user", content: text }
+                        ],
+                        temperature: 0.7
+                    })
+                });
+
                 const data = await response.json();
 
+                // 4. 检查响应状态
                 if (!response.ok) {
-                    throw new Error(data.error ? data.error.message : `状态码: ${response.status}`);
+                    throw new Error(data.error ? data.error.message : `请求失败(${response.status})`);
                 }
 
+                // 5. 更新界面内容
                 if (data.choices && data.choices.length > 0) {
                     aiMsgDiv.innerText = data.choices[0].message.content;
                 } else {
-                    throw new Error("API 返回数据格式异常");
+                    throw new Error("未收到有效的回复内容");
                 }
 
             } catch (error) {
-                aiMsgDiv.innerText = "❌ 出错了: " + error.message;
-                aiMsgDiv.classList.add('text-red-500');
-                console.error("详细错误日志:", error);
+                aiMsgDiv.innerText = "❌ 错误: " + error.message;
+                aiMsgDiv.style.color = "#dc2626"; // 变红显示
+                console.error("Debug info:", error);
             }
         }
 
-        // 3. 这个辅助函数负责把文字变成气泡显示在屏幕上
+        // 辅助函数：创建消息气泡
         function appendMessage(role, text) {
             const wrapper = document.createElement('div');
             wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
             
             const msg = document.createElement('div');
-            msg.className = role === 'user' 
-                ? 'bg-blue-600 text-white rounded-2xl px-4 py-2 max-w-[80%] shadow-md' 
-                : 'bg-white border border-gray-200 rounded-2xl px-4 py-2 max-w-[80%] shadow-sm';
+            msg.className = role === 'user' ? 'user-msg px-4 py-3 max-w-[85%] shadow-md' : 'ai-msg px-4 py-3 max-w-[85%] shadow-sm';
             msg.innerText = text;
-            // 请确保这里的引号是英文的，并且 SK 开头的字符串中间没有空格
-const API_KEY = "sk-b87bcc629e584034b3b25c7dec9f89f8".trim(); 
-
-// 在发送请求的地方，确保 Authorization 拼接正确
-const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        // 注意这里：Bearer 后面有一个空格，然后才是 Key
-        "Authorization": "Bearer " + API_KEY 
-    },
-    body: JSON.stringify({
-        model: "deepseek-chat", 
-        messages: [
-            { role: "system", content: "你是一个有用的助手。" },
-            { role: "user", content: text }
-        ]
-    })
-});
+            
             wrapper.appendChild(msg);
             chatBox.appendChild(wrapper);
+            
+            // 自动滚动到底部
             chatBox.scrollTop = chatBox.scrollHeight;
-            return msg; 
+            return msg;
         }
 
-        // 4. 监听回车键
+        // 支持回车发送
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
